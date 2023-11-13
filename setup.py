@@ -15,11 +15,11 @@ def get_version(rel_path):
     else:
         raise RuntimeError("Unable to find version string.")
 
-with open("run_experiments/README.md", "r") as readme_file:
+with open("runexp/README.md", "r") as readme_file:
     long_description = readme_file.read()
 
 setup(
-    name='run_experiments',
+    name='runexp',
     version="0.0.1",
     author='Ignace Bleukx',
     author_email="ignace.bleukx@kuleuven.be",

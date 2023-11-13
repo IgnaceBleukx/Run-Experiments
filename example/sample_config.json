@@ -1,0 +1,9 @@
+{
+"seed" : [1,2,3,4],
+"arg1": {
+	"name": "HandyDataWrapper",
+	"v1": "this value",
+	"v2": 1337
+},
+"arg2": "hello world"
+}

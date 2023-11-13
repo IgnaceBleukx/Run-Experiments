@@ -1,4 +1,7 @@
 import glob
+import multiprocessing
+
+dirlock = multiprocessing.Lock()
 
 def unravel_dict(root_d):
     new_dicts = [dict()]
