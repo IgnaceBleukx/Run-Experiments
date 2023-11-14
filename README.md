@@ -1,13 +1,14 @@
 # RunExp
 **Warning** This repository is still experimental and does not provide ANY guarantees or warranty!!
 
-This repostory aims to be a collection of tools to ease running experiments.
+This repository contains the code for the `runexp`, a Python tool to ease running Python-coded experiments.
+
 Highlight features include:
 - Clear filestructure
   - Including support for json and pickle files
 - Easy paralellization of experiments
 - Data loading tools for processing experiment results
-- ...
+- [Anything you put in a pull request :)]
 
 ## How to install?
 The easiest way to use the repository is to download/clone the repo and install the package in "editable" mode:
