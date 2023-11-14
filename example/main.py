@@ -38,7 +38,7 @@ if __name__ == "__main__":
                                    output=args.output,
                                    printlog=True)
 
-        if args.batch is True:
+        if args.unravel is True:
             runner.run_batch(config, parallel=args.parallel, num_workers=args.num_workers)
         else:
             runner.run_one(config)

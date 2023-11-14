@@ -11,10 +11,9 @@ def default_parser():
     parser.add_argument("func", type=str, help="Main function of the experiment")
     parser.add_argument("runner", type=str, help="runexp Runner subclass to call")
     parser.add_argument("output", type=str, help="Directory to output results of experiments")
-    parser.add_argument("--batch", type=bool, default=True, help="Whether to run experiments in a batch (will unravel lists in configuration file to separate configs)")
-    parser.add_argument("--parallel", type=bool, default=False, help="Wheter to run experiments in paralell, only useful if `--batch` is True")
-    parser.add_argument("--num-workers", type=int, default=cpu_count()-1, help="Number of threads to use for parallelization (=nb of experiments running in parallel, default=numthreads-1)")
-
+    parser.add_argument("-u", "--unravel", action="store_true", help="Whether to unravel config file to run experiments in a batch (will unravel lists in configuration file to separate configs)")
+    parser.add_argument("--parallel", action="store_false", help="Wheter to run experiments in paralell, only useful if `--unravel` is True")
+    parser.add_argument("--num-workers", action="store_const", const=cpu_count()-1, default=cpu_count()-1, help="Number of threads to use for parallelization (=nb of experiments running in parallel, default=numthreads-1)")
     return parser
 
 
