@@ -1,4 +1,5 @@
 # RunExp
+**Warning** This repository is still experimental and does not provide ANY guarantees or warranty!!
 
 This repostory aims to be a collection of tools to ease running experiments.
 Highlight features include:
@@ -7,7 +8,6 @@ Highlight features include:
 - Easy paralellization of experiments
 - Data loading tools for processing experiment results
 - ...
-
 
 ## How to install?
 The easiest way to use the repository is to download/clone the repo and install the package in "editable" mode:
