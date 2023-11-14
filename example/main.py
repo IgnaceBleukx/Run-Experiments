@@ -26,7 +26,7 @@ class MyRunner(Runner):
 
 if __name__ == "__main__":
 
-    from experiment import my_cool_experiment
+    from experiment import my_cool_experiment # make sure `func` is imported here
     import json
 
     parser = default_parser()
