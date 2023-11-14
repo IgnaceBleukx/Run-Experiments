@@ -49,8 +49,8 @@ class Runner:
     def make_kwargs(self, config):
         raise NotImplementedError(f"Implement `make_kwargs` for type {self}")
 
-    def description(self, config):
-        return f"Implement method  this method in your {type(self)}"
+    def description(self, config) -> str:
+        return f"Implement `description(config)` for {type(self)} to get informative progress"
 
     #####################################################
     #                   Main dispatch                   #
@@ -73,6 +73,8 @@ class Runner:
         if parallel is True:
             if num_workers is None:
                 num_workers = multiprocessing.cpu_count() - 1
+
+            print(f"Running in parallel with {num_workers} threads")
 
             manager = multiprocessing.Manager()
             dirlock = manager.Lock()
