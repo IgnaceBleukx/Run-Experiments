@@ -1,4 +1,4 @@
-from runexp import Runner, default_parser, run
+from runexp import Runner, default_parser
 
 # make sure everything you call is imported here
 from dataclasses import HandyDataWrapper

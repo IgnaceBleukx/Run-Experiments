@@ -15,30 +15,3 @@ def default_parser():
     parser.add_argument("--parallel", action="store_false", help="Wheter to run experiments in paralell, only useful if `--unravel` is True")
     parser.add_argument("--num-workers", action="store_const", const=cpu_count()-1, default=cpu_count()-1, help="Number of threads to use for parallelization (=nb of experiments running in parallel, default=numthreads-1)")
     return parser
-
-
-def run(parser:argparse.ArgumentParser):
-
-    import importlib
-    import traceback
-
-    called_from = traceback.extract_stack(limit=2)[-1]
-    print(called_from.filename)
-    # importlib.import_module(called_from.filename)
-    # importlib.__import__(called_from.filename)
-
-
-    args = parser.parse_args()
-    eval(f"from {called_from.filename} import {eval(args.runner)}")
-
-
-    with open(args.config, "r") as f:
-        config = json.loads(f.read())
-        runner = eval(args.runner)(func=eval(args.func),
-                                   output=args.output,
-                                   printlog=False)
-
-        if args.batch is True:
-            runner.run_batch(config, parallel=args.parallel, num_workers=args.num_workers)
-        else:
-            runner.run_one(config)
