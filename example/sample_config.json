@@ -1,5 +1,5 @@
 {
-"seed" : {"_from" : 0, "_to": 10},
+"seed" : {"_from" : 0, "_to": 5},
 "arg1": {
 	"name": "HandyDataWrapper",
 	"v1": "some very important value",
