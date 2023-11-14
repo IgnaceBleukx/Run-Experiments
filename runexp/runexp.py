@@ -7,7 +7,7 @@ import json
 import pickle
 from tqdm.auto import tqdm
 
-from .utils import dict_subset, unravel_dict, can_stringify
+from .utils import dict_subset, unravel_dict, can_stringify, CONFIG
 
 from os.path import dirname, abspath, join
 from os import listdir
@@ -57,7 +57,7 @@ class Runner:
     #####################################################
 
     def run_one(self, config):
-        self.run_experiment(config, self.mkdir())
+        self.run_experiment(config)
 
     def run_batch(self, config, parallel=False, num_workers=None):
 
@@ -68,6 +68,7 @@ class Runner:
         configs = self.filter_experiments(configs)
         print(f"Skipping {total_exp - len(configs)} experiments")
         self.n_experiments = len(configs)
+        print(f"Running {len(configs)} remaining experiments")
 
         if parallel is True:
             if num_workers is None:
@@ -77,16 +78,17 @@ class Runner:
             dirlock = manager.Lock()
 
             pool = multiprocessing.Pool(num_workers, maxtasksperchild=1, initargs=(dirlock,))
-            pool.starmap(self.run_experiment, zip(configs, [self.mkdir() for _ in configs]))
+            lst = list(tqdm(pool.imap(self.run_experiment, configs), total=len(configs)))
 
         else:
             pbar = tqdm(total=len(configs))
             for config in configs:
                 pbar.set_description(self.description(config))
-                self.run_experiment(config, self.mkdir())
+                self.run_experiment(config)
                 pbar.update()
 
-    def run_experiment(self, config, dirname):
+    def run_experiment(self, config):
+        dirname = self.mkdir()
         kwargs = self.make_kwargs(config)
         result = self.func(**kwargs)
         self.save_result(config, result, dirname)
@@ -95,6 +97,13 @@ class Runner:
     #                   Helper functions                #
     #####################################################
 
+    def remove_empty_subdirs(self):
+        for edir in listdir(self.output_dir):
+            full_dir = join(self.output_dir, edir)
+            if len(listdir(full_dir)) == 0:
+                os.rmdir(full_dir)
+
+        return True
 
     def filter_experiments(self, configs):
         """
@@ -104,12 +113,12 @@ class Runner:
         for edir in listdir(self.output_dir):
             full_dir = join(self.output_dir, edir)
 
-            if "config.json" not in listdir(full_dir):
+            if CONFIG not in listdir(full_dir):
                 if len(listdir(full_dir)) != 0:
-                    raise ValueError("{full_dir} is not emptpy, but does not contain 'config.json', was the directory created by RunExp?")
+                    raise ValueError("{full_dir} is not emptpy, but does not contain {CONFIG}, was the directory created by RunExp?")
                 else:
                     continue
-            with open(join(self.output_dir, edir, "config.json"), "r") as f:
+            with open(join(self.output_dir, edir, CONFIG), "r") as f:
                 disk_conf = json.loads(f.read())
                 if disk_conf in filtered:
                     filtered.remove(disk_conf)
@@ -148,8 +157,8 @@ class Runner:
 
 
     def save_result(self, config, result, dirname):
-        print("Trying to save result:", config, result, dirname)
-        with open(join(dirname, "config.json"), "w") as f:
+
+        with open(join(dirname, CONFIG), "w") as f:
             f.write(json.dumps(config))
 
         for key, value in result.items():

@@ -1,10 +1,20 @@
 import glob
 import multiprocessing
+from os.path import join
+from os import listdir
+import pickle
+import json
 
 dirlock = multiprocessing.Lock()
 
+CONFIG = "config.json"
+
 def unravel_dict(root_d):
     new_dicts = [dict()]
+
+    # range?
+    if isinstance(root_d, dict) and set(root_d.keys()) == {"_from", "_to"}:
+        root_d = list(range(root_d['_from'], root_d['_to']))
 
     if isinstance(root_d, dict):
         for key, val in root_d.items():
@@ -52,3 +62,38 @@ def get_flat_dict(d):
 
 def can_stringify(val):
     return isinstance(val, (float, int, str))
+
+
+def load_results(dirname, attribute, filter=dict()):
+    """
+     load results from directory, filter based in filtering dict
+    :param dirname: main directory of results
+    :param attribute: artifact to load (any of the files stored)
+    :param filter - optional: dictionary to filter configuration files
+    :return:
+    """
+    for edir in listdir(dirname):
+        if CONFIG not in listdir(join(dirname, edir)):
+            continue
+
+        with open(CONFIG, "r") as f:
+            config = json.loads(f.read())
+
+        if dict_subset(filter, config) is False:
+            continue
+
+        fname = join(dirname, edir, attribute)
+        if attribute.endswith(".json"):
+            with open(fname, "r") as f:
+                yield json.loads(f.read())
+        elif attribute.endswith(".pickle"):
+            with open(fname, "rb") as f:
+                yield pickle.loads(f.read())
+        else:
+            with open(fname, "r") as f:
+                yield eval(f.read())
+
+
+
+
+
