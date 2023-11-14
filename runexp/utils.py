@@ -72,6 +72,12 @@ def load_results(dirname, attribute, filter=dict()):
     :param filter - optional: dictionary to filter configuration files
     :return:
     """
+    assert isinstance(attribute, str)
+    assert attribute.endswith(".txt") or \
+            attribute.endswith(".json") or \
+                attribute.endswith(".pickle"), "Please provide filename extension of the attribute"
+
+
     for edir in listdir(dirname):
         if CONFIG not in listdir(join(dirname, edir)):
             continue
