@@ -164,7 +164,11 @@ class Runner:
             f.write(json.dumps(config))
 
         for key, value in result.items():
-            if can_stringify(value):
+            if "." in str(key): # will assume extension is given
+                with open(join(dirname, str(key)), "w") as f:
+                    f.write(str(value))
+
+            elif can_stringify(value):
                 with open(join(dirname, str(key) + ".txt"), "w") as f:
                     f.write(str(value))
 
