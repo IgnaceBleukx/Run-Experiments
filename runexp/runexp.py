@@ -100,10 +100,16 @@ class Runner:
     #####################################################
 
     def remove_empty_subdirs(self):
-        for edir in listdir(self.output_dir):
+        dirs =  listdir(self.output_dir)
+        removed = 0
+        pbar = tqdm(total=len(dirs))
+        for edir in dirs:
             full_dir = join(self.output_dir, edir)
             if len(listdir(full_dir)) == 0:
                 os.rmdir(full_dir)
+                removed += 1
+                tqdm.update(f"Removed {removed} dirs")
+            pbar.update()
 
         return True
 
