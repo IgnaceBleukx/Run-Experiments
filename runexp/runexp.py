@@ -108,7 +108,7 @@ class Runner:
             if len(listdir(full_dir)) == 0:
                 os.rmdir(full_dir)
                 removed += 1
-                tqdm.update(f"Removed {removed} dirs")
+                pbar.set_description(f"Removed {removed} dirs")
             pbar.update()
 
         return True
