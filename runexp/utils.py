@@ -1,20 +1,48 @@
 import glob
 import multiprocessing
+import time
+from datetime import datetime, timedelta, date
 from os.path import join
 from os import listdir
 import pickle
 import json
+import pandas as pd
+from tqdm.auto import tqdm
+from natsort import natsorted # pip install natsort
+
 
 dirlock = multiprocessing.Lock()
 
 CONFIG = "config.json"
+STRFTIME = "%Y-%m-%d %H:%M:%S"
 
 def unravel_dict(root_d):
     new_dicts = [dict()]
 
     # range?
-    if isinstance(root_d, dict) and set(root_d.keys()) == {"_from", "_to"}:
-        root_d = list(range(root_d['_from'], root_d['_to']))
+    if isinstance(root_d, dict) and {"_from", "_to"} < set(root_d.keys()):
+        try:
+            start = datetime.strptime(root_d["_from"], STRFTIME)
+            stop = datetime.strptime(root_d["_to"], STRFTIME)
+            step = root_d["_step"]
+            units = ["seconds", "minutes", "hours", "days", "weeks", "months", "years"]
+            for u in units:
+                if u in step:
+                    val, unit = step.split(" ")
+                    assert unit == u
+                    step = timedelta(**{unit : int(val)})
+                    break
+            if isinstance(step, str):
+                raise NotImplementedError(f"Unknown time delta: {step}, chose from {units}")
+
+            t = start
+            root_d = []
+            while t < stop:
+                root_d.append({"start" : t, "stop": t+step})
+                t += step
+
+        except ValueError:
+            root_d = list(range(root_d['_from'], root_d['_to'], root_d.get("_step", None)))
 
     if isinstance(root_d, dict):
         for key, val in root_d.items():
@@ -26,14 +54,23 @@ def unravel_dict(root_d):
         new_dicts = [d for lst in new_dicts for d in lst]
 
     elif isinstance(root_d, str) and "*" in root_d:
-        new_dicts = glob.glob(root_d) # filename, expand
+        new_dicts = natsorted(glob.glob(root_d)) # filename, expand
     else:
         new_dicts = [root_d] # nothing to unravel
 
     return new_dicts
 
 def dict_subset(d1, d2):
+
     if type(d1) != type(d2):
+        # check for datetime
+        if isinstance(d1, datetime) or isinstance(d2, datetime):
+            if isinstance(d1, datetime):
+                d1 = d1.strftime(STRFTIME)
+            if isinstance(d2, datetime):
+                d2 = d2.strftime(STRFTIME)
+            if d1 != d2:
+                return False
         return False
     if not set(d1.keys()).issubset(set(d2.keys())):
         return False
@@ -49,6 +86,22 @@ def dict_subset(d1, d2):
     return True
 
 
+def dt_to_str_in_dict(d):
+
+    if isinstance(d, datetime):
+        return d.strftime(STRFTIME)
+
+    elif isinstance(d, list):
+        return [dt_to_str_in_dict(x) for x in d]
+
+    elif isinstance(d, set):
+        return (dt_to_str_in_dict(x) for x in d)
+
+    elif isinstance(d, dict):
+        return {k : dt_to_str_in_dict(v) for k, v in d.items()}
+    else:
+        return d
+
 def get_flat_dict(d):
     new_dict = dict()
     for key, val in d.items():
@@ -63,6 +116,61 @@ def get_flat_dict(d):
 def can_stringify(val):
     return isinstance(val, (float, int, str))
 
+
+def load_from_file(fname) -> dict:
+    attr = fname.split("/")[-1].split(".")[0]
+
+    if fname.endswith(".json"):
+        with open(fname, "r") as f:
+            return json.loads(f.read())
+    elif fname.endswith(".pickle"):
+        with open(fname, "rb") as f:
+            return {attr: pickle.loads(f.read())}
+    elif fname.endswith(".txt"):
+        with open(fname, "rb") as f:
+            return {attr: eval(f.read())}
+    else:
+        raise ValueError(f"Unknown file extension for file {fname}")
+
+def results_to_df(dirname, fnames=[], separator="/", ignore_missing=False):
+    dfs = []
+    dirs = sorted(listdir(dirname))
+    pbar = tqdm(total=len(dirs), desc="Reading results from disk")
+    missing = []
+    for fname in [CONFIG] + fnames:
+        results_fname = []
+        for edir in dirs:
+            if listdir(join(dirname, edir)):
+                fullname = join(dirname, edir, fname)
+                try:
+                    res = load_from_file(fullname)
+                    results_fname.append(flat_dict(res, separator))
+                    pbar.update(1/(1+len(fnames)))
+                except FileNotFoundError as e:
+                    if ignore_missing:
+                        missing.append(fullname)
+                    else:
+                        raise e
+        dfs.append(pd.DataFrame(results_fname))
+
+    if len(missing):
+        print(f"WARNING: missing following files:")
+        for n in natsorted(missing):
+            print(n)
+    return pd.concat(dfs, axis="columns")
+
+
+def flat_dict(d, separator="/"):
+    assert isinstance(d, dict), f"Expected dictionary but got {type(d)}"
+    flat = dict()
+    for key, val in d.items():
+        if isinstance(val, dict):
+            flat_sub = flat_dict(val, separator)
+            for subkey, subval in flat_sub.items():
+                flat[f"{key}{separator}{subkey}"] = subval
+        else:
+            flat[key] = val
+    return flat
 
 def load_results(dirname, attribute, filter=dict()):
     """
