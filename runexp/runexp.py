@@ -7,7 +7,7 @@ import json
 import pickle
 from tqdm.auto import tqdm
 
-from .utils import dict_subset, unravel_dict, can_stringify, CONFIG
+from .utils import dict_subset, unravel_dict, can_stringify, CONFIG, dt_to_str_in_dict
 
 from os.path import dirname, abspath, join
 from os import listdir
@@ -59,7 +59,7 @@ class Runner:
     def run_one(self, config):
         self.run_experiment(config)
 
-    def run_batch(self, config, parallel=False, num_workers=None):
+    def run_batch(self, config, parallel=False, num_workers=None, show_progress=True):
 
         configs = unravel_dict(config)
         total_exp = len(configs)
@@ -83,11 +83,11 @@ class Runner:
             lst = list(tqdm(pool.imap(self.run_experiment, configs), total=len(configs)))
 
         else:
-            pbar = tqdm(total=len(configs))
+            if show_progress: pbar = tqdm(total=len(configs))
             for config in configs:
-                pbar.set_description(self.description(config))
+                if show_progress: pbar.set_description(self.description(config))
                 self.run_experiment(config)
-                pbar.update()
+                if show_progress: pbar.update()
 
     def run_experiment(self, config):
         dirname = self.mkdir()
@@ -117,6 +117,7 @@ class Runner:
         """
             Filter experiments already finished in output directory
         """
+        str_filtered = [dt_to_str_in_dict(c) for c in configs]
         filtered = copy.copy(configs)
         for edir in listdir(self.output_dir):
             full_dir = join(self.output_dir, edir)
@@ -128,8 +129,10 @@ class Runner:
                     continue
             with open(join(self.output_dir, edir, CONFIG), "r") as f:
                 disk_conf = json.loads(f.read())
-                if disk_conf in filtered:
-                    filtered.remove(disk_conf)
+                if disk_conf in str_filtered:
+                    idx = str_filtered.index(disk_conf)
+                    filtered.pop(idx)
+                    str_filtered.pop(idx)
 
         return filtered
 
@@ -167,7 +170,7 @@ class Runner:
     def save_result(self, config, result, dirname):
 
         with open(join(dirname, CONFIG), "w") as f:
-            f.write(json.dumps(config))
+            f.write(json.dumps(dt_to_str_in_dict(config)))
 
         for key, value in result.items():
             if "." in str(key): # will assume extension is given
