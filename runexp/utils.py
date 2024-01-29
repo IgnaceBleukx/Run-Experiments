@@ -20,7 +20,7 @@ def unravel_dict(root_d):
     new_dicts = [dict()]
 
     # range?
-    if isinstance(root_d, dict) and {"_from", "_to"} < set(root_d.keys()):
+    if isinstance(root_d, dict) and {"_from", "_to"} <= set(root_d.keys()):
         try:
             start = datetime.strptime(root_d["_from"], STRFTIME)
             stop = datetime.strptime(root_d["_to"], STRFTIME)
@@ -41,8 +41,8 @@ def unravel_dict(root_d):
                 root_d.append({"start" : t, "stop": t+step})
                 t += step
 
-        except ValueError:
-            root_d = list(range(root_d['_from'], root_d['_to'], root_d.get("_step", None)))
+        except (TypeError, ValueError):
+            root_d = list(range(root_d['_from'], root_d['_to'], root_d.get("_step", 1)))
 
     if isinstance(root_d, dict):
         for key, val in root_d.items():
