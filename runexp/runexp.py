@@ -186,8 +186,8 @@ class Runner:
                     f.write(json.dumps(value))
 
             elif isinstance(value, list) and all(can_stringify(v) for v in value):
-                with open(join(dirname, str(key) + ".txt"), "w"):
-                    f.write("\n".join(value))
+                with open(join(dirname, str(key) + ".lst"), "w") as f:
+                    f.write("\n".join([str(v) for v in value]))
             else:  # save as pickle
                 with open(join(dirname, str(key) + ".pickle"), "wb") as f:
                     pickle.dump(value, f)
