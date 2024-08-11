@@ -2,10 +2,13 @@ import glob
 import multiprocessing
 import time
 from datetime import datetime, timedelta, date
+from json import JSONDecodeError
 from os.path import join
 from os import listdir
 import pickle
 import json
+
+import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
 from natsort import natsorted # pip install natsort
@@ -118,26 +121,35 @@ def can_stringify(val):
 
 
 def load_from_file(fname) -> dict:
-    attr = fname.split("/")[-1].split(".")[0]
+    # print(f"Loading {fname}")
+    attr = fname.split("/")[-1].split(".")[0] #remove extension
 
     if fname.endswith(".json"):
-        with open(fname, "r") as f:
-            return json.loads(f.read())
+        try:
+            with open(fname, "r") as f:
+                return json.loads(f.read())
+        except JSONDecodeError as e:
+            print(f"Error while loading {fname}")
+            raise e
     elif fname.endswith(".pickle"):
         with open(fname, "rb") as f:
             return {attr: pickle.loads(f.read())}
     elif fname.endswith(".txt"):
         with open(fname, "rb") as f:
             return {attr: eval(f.read())}
+    elif fname.endswith(".lst"):
+        with open(fname, "r") as f:
+            return {attr: [eval(l.strip()) for l in f.readlines()]}
     else:
         raise ValueError(f"Unknown file extension for file {fname}")
 
-def results_to_df(dirname, fnames=[], separator="/", ignore_missing=False):
+def results_to_df_old(dirname, fnames=[], separator="/", ignore_missing=False):
     dfs = []
     dirs = sorted(listdir(dirname))
+    dirs_read = []
     pbar = tqdm(total=len(dirs), desc="Reading results from disk")
     missing = []
-    for fname in [CONFIG] + fnames:
+    for idx, fname in enumerate([CONFIG] + fnames):
         results_fname = []
         for edir in dirs:
             if listdir(join(dirname, edir)):
@@ -146,9 +158,11 @@ def results_to_df(dirname, fnames=[], separator="/", ignore_missing=False):
                     res = load_from_file(fullname)
                     results_fname.append(flat_dict(res, separator))
                     pbar.update(1/(1+len(fnames)))
+                    if idx == 0: dirs_read.append(edir)
                 except FileNotFoundError as e:
                     if ignore_missing:
                         missing.append(fullname)
+                        results_fname.append(np.nan)
                     else:
                         raise e
         dfs.append(pd.DataFrame(results_fname))
@@ -157,7 +171,40 @@ def results_to_df(dirname, fnames=[], separator="/", ignore_missing=False):
         print(f"WARNING: missing following files:")
         for n in natsorted(missing):
             print(n)
-    return pd.concat(dfs, axis="columns")
+    df = pd.concat(dfs, axis="columns")
+    df.index = dirs_read
+    return df
+
+
+def results_to_df(dirname, fnames=[], separator="/", ignore_missing=False):
+    dirs = sorted(listdir(dirname))
+    pbar = tqdm(total=len(dirs), desc="Reading results from disk")
+    missing = []
+    data = []
+    for edir in dirs:
+        row = dict()
+        for fname in [CONFIG] + fnames:
+            fullname = join(dirname, edir, fname)
+            attr = fname.split("/")[-1].split(".")[0]  # remove extension
+            try:
+                res = {attr: load_from_file(fullname)}
+                row.update(flat_dict(res, separator))
+            except FileNotFoundError as e:
+                if ignore_missing is True:
+                    missing.append(fullname)
+                else:
+                    raise e
+        data.append(row)
+        pbar.update()
+
+    if len(missing):
+        print(f"WARNING: missing following files:")
+        for n in natsorted(missing):
+            print(n)
+
+    df = pd.DataFrame.from_dict(data)
+    df.index = dirs
+    return df
 
 
 def flat_dict(d, separator="/"):
