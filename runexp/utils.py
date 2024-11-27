@@ -135,11 +135,21 @@ def load_from_file(fname) -> dict:
         with open(fname, "rb") as f:
             return {attr: pickle.loads(f.read())}
     elif fname.endswith(".txt"):
-        with open(fname, "rb") as f:
-            return {attr: eval(f.read())}
+        with open(fname, "r") as f:
+            str_val = f.read()
+            try:
+                return {attr: eval(str_val)}
+            except NameError:
+                return {attr : str_val}
     elif fname.endswith(".lst"):
         with open(fname, "r") as f:
-            return {attr: [eval(l.strip()) for l in f.readlines()]}
+            res = []
+            for l in f.readlines():
+                try:
+                    res.append(eval(l.strip()))
+                except NameError:
+                    res.append(l.strip())
+            return {attr : res}
     else:
         raise ValueError(f"Unknown file extension for file {fname}")
 
