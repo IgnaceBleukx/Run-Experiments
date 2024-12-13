@@ -18,6 +18,18 @@ dirlock = multiprocessing.Lock()
 
 CONFIG = "config.json"
 STRFTIME = "%Y-%m-%d %H:%M:%S"
+time_units = ["seconds", "minutes", "hours", "days", "weeks", "months", "years"]
+
+def parse_timedelta(string):
+    for u in time_units:
+        if u in string:
+            val, unit = string.split(" ")
+            assert unit == u
+            step = timedelta(**{unit : int(val)})
+            return step
+    else:
+        raise NotImplementedError(f"Unknown time delta: {step}, chose from {units}")
+
 
 def unravel_dict(root_d):
     new_dicts = [dict()]
@@ -27,17 +39,7 @@ def unravel_dict(root_d):
         try:
             start = datetime.strptime(root_d["_from"], STRFTIME)
             stop = datetime.strptime(root_d["_to"], STRFTIME)
-            step = root_d["_step"]
-            units = ["seconds", "minutes", "hours", "days", "weeks", "months", "years"]
-            for u in units:
-                if u in step:
-                    val, unit = step.split(" ")
-                    assert unit == u
-                    step = timedelta(**{unit : int(val)})
-                    break
-            if isinstance(step, str):
-                raise NotImplementedError(f"Unknown time delta: {step}, chose from {units}")
-
+            step = parse_timedelta(root_d["_step"])
             t = start
             root_d = []
             while t < stop:
@@ -56,8 +58,16 @@ def unravel_dict(root_d):
         new_dicts = [unravel_dict(val) for val in root_d]
         new_dicts = [d for lst in new_dicts for d in lst]
 
-    elif isinstance(root_d, str) and "*" in root_d:
-        new_dicts = natsorted(glob.glob(root_d)) # filename, expand
+    elif isinstance(root_d, str):
+        if "*" in root_d:
+            new_dicts = natsorted(glob.glob(root_d)) # filename, expand
+        elif any(unit in root_d for unit in time_units): # time delta, convert
+            new_dicts = [parse_timedelta(root_d)]
+        else:
+            try: # try converting to time
+                new_dicts = [datetime.strptime(root_d, STRFTIME)]
+            except (TypeError, ValueError):
+                new_dicts = [root_d]
     else:
         new_dicts = [root_d] # nothing to unravel
 
