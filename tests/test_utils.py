@@ -29,6 +29,13 @@ class TestDictUtils(unittest.TestCase):
         dicts = unravel_dict(config)
         self.assertEqual(len(dicts), 8)
 
+    def test_unravel_nested_range(self):
+
+        config = dict(a1 = dict(_from=0, _to=10, _step=[2,3]))
+        dicts = unravel_dict(config)
+        self.assertEqual(len(dicts), 5 + 4)
+
+
     def test_unravel_dt(self):
         config = dict(
             a1="v1",
@@ -63,6 +70,12 @@ class TestDictUtils(unittest.TestCase):
         dicts = unravel_dict(config)
         self.assertEqual(len(dicts), 15)
 
+    def test_unravel_dt_nested_range(self):
+        config = dict(
+            x_dt={"_from": "2025-01-01", "_to": "2025-02-01", "_step": ["1 days", "12 hours"]}
+        )
+        dicts = unravel_dict(config)
+        self.assertEqual(len(dicts), 31 + 31 * 2)
 
     def test_flatten(self):
         config = dict(
