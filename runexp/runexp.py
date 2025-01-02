@@ -17,7 +17,7 @@ from .utils import dirlock
 
 class Runner:
 
-    def __init__(self, func, output, printlog=True, log_level=logging.INFO):
+    def __init__(self, func, output, printlog=True, memory_limit=-1, log_level=logging.INFO):
 
         try:
             os.mkdir(output)
@@ -31,6 +31,7 @@ class Runner:
         self.func = func
         self.output_dir = output
         self.digits = 6
+        self.memlimit = memory_limit
         global dirlock
         dirlock = multiprocessing.Lock()
 
@@ -57,7 +58,12 @@ class Runner:
     #####################################################
 
     def run_one(self, config):
-        self.run_experiment(config)
+        """
+            Run experiment with given configuration file.
+            Config file will **not** be unraveled, and simply be passed to the experiment function
+        """
+        pool = multiprocessing.Pool(1, maxtasksperchild=1, initargs=(dirlock,))
+        pool.map(self.run_experiment,[config])
 
     def run_batch(self, config, parallel=False, num_workers=None, show_progress=True):
 
@@ -90,9 +96,17 @@ class Runner:
                 if show_progress: pbar.update()
 
     def run_experiment(self, config):
+        if self.memlimit > 0:
+            _, hard = resource.getrlimit(resource.RLIMIT_AS)
+            limit = int(self.memlimit * 1024 * 1024 * 1024)
+            resource.setrlimit(resource.RLIMIT_AS, (limit, hard))
+
         dirname = self.mkdir()
         kwargs = self.make_kwargs(config)
-        result = self.func(**kwargs)
+        try:
+            result = self.func(**kwargs)
+        except MemoryError as e:
+            result = dict(err=str(e))
         self.save_result(config, result, dirname)
 
     #####################################################
