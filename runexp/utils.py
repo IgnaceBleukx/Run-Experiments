@@ -149,7 +149,7 @@ def load_from_file(fname) -> dict:
             str_val = f.read()
             try:
                 return {attr: eval(str_val)}
-            except NameError:
+            except (NameError, SyntaxError):
                 return {attr : str_val}
     elif fname.endswith(".lst"):
         with open(fname, "r") as f:
