@@ -7,9 +7,9 @@ import os
 import runexp
 
 
-def make_lst(size):
-    data = [0] * (int(size * 1024 * 1024))  # 10MB list
-    return dict(data=data)
+def make_lst(size_in_bytes):
+    data = [0] * size_in_bytes # make a large list
+    return dict(size_in_mb=size_in_bytes / (1024 * 1024), data=data)
 
 def dummy(*args, **kwargs):
     return dict(result="None")
@@ -42,7 +42,10 @@ class RunnerTests(unittest.TestCase):
     def test_memlimit(self):
         tempdir = os.path.join(tempfile.mkdtemp(), "results")
         runner = self.MyRunner(make_lst, output=tempdir, memory_limit=1024) # 1GB limit
-        runner.run_batch(config=dict(size=[1024 ** x for x in range(5)]))
+        runner.run_batch(config=dict(size_in_bytes=[1024 ** x for x in range(5)]))
 
-        for exp_name in os.listdir(tempdir):
-            print(os.listdir(os.path.join(tempdir, exp_name)))
+        self.assertIn("size_in_mb.txt", os.listdir(os.path.join(tempdir,"000001")))  # 1 byte should work
+        self.assertIn("size_in_mb.txt", os.listdir(os.path.join(tempdir, "000002"))) # 1KB should work
+        self.assertIn("size_in_mb.txt", os.listdir(os.path.join(tempdir, "000003"))) # 1MB should work
+        self.assertIn("err.txt", os.listdir(os.path.join(tempdir, "000004")))        # 1GB should not work
+        self.assertIn("err.txt", os.listdir(os.path.join(tempdir, "000005")))        # 10GB should not work
