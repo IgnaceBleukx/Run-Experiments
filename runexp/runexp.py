@@ -2,6 +2,7 @@ import logging
 import multiprocessing
 import os
 import copy
+import resource
 import sys
 import json
 import pickle
