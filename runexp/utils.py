@@ -36,16 +36,30 @@ def unravel_dict(root_d, _dt=False, _td=False):
             assert "_step" in root_d, f"Unraveling a datetime range requires a step-size: {root_d}"
             start = pd.to_datetime(root_d['_from'])
             end = pd.to_datetime(root_d['_to'])
-            step = pd.to_timedelta(root_d['_step'])
+            if isinstance(root_d['_step'], list): # different step sizes
+                steps = pd.to_timedelta(root_d['_step']).tolist()
+            else:
+                steps = [pd.to_timedelta(root_d['_step'])]
             root_d = []
-            t = start
-            while t < end:
-                root_d.append({"start": t, "delta": step})
-                t += step
+            for stepsize in steps:
+                t = start
+                while t < end:
+                    root_d.append({"start": t, "delta": stepsize})
+                    t += stepsize
         elif _td is True:
             raise ValueError("Cannot make a range from time-delta's!", root_d)
         else: # normal range
-            root_d = list(range(root_d['_from'], root_d['_to'], root_d.get("_step", 1)))
+            if "_step" not in root_d:
+                steps = [1]
+            elif isinstance(root_d['_step'], list):
+                steps = root_d['_step']
+            else:
+                steps = [root_d['_step']]
+
+            start, end = root_d['_from'], root_d['_to']
+            root_d = []
+            for stepsize in steps:
+                root_d += list(range(start, end, stepsize))
 
 
     if isinstance(root_d, dict):
