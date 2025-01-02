@@ -20,16 +20,14 @@ CONFIG = "config.json"
 STRFTIME = "%Y-%m-%d %H:%M:%S"
 time_units = ["seconds", "minutes", "hours", "days", "weeks", "months", "years"]
 
-def parse_timedelta(string):
-    for u in time_units:
-        if u in string:
-            val, unit = string.split(" ")
-            assert unit == u
-            step = timedelta(**{unit : int(val)})
-            return step
-    else:
-        raise NotImplementedError(f"Unknown time delta: {step}, chose from {units}")
 
+def can_stringify(val):
+    return isinstance(val, (float, int, str))
+
+
+###########################
+#     Processing dicts    #
+###########################
 
 def unravel_dict(root_d):
     new_dicts = [dict()]
@@ -73,8 +71,22 @@ def unravel_dict(root_d):
 
     return new_dicts
 
-def dict_subset(d1, d2):
 
+def get_flat_dict(d):
+    new_dict = dict()
+    for key, val in d.items():
+        if isinstance(val, dict):
+            for subkey, subval in get_flat_dict(val).items():
+                new_dict[(key,) + subkey] = subval
+        else:
+            new_dict[(key,)] = val
+    return new_dict
+
+def dict_subset(d1, d2):
+    """
+        Recursively check whether d1 is a subset of d2.
+        A dictionary is a subset of another if it contains a subset of the keys, and matches each present value.
+    """
     if type(d1) != type(d2):
         # check for datetime
         if isinstance(d1, datetime) or isinstance(d2, datetime):
@@ -85,12 +97,12 @@ def dict_subset(d1, d2):
             if d1 != d2:
                 return False
         return False
+
     if not set(d1.keys()).issubset(set(d2.keys())):
         return False
 
     for key in d1:
-        if isinstance(d1[key], dict):
-            # recurse
+        if isinstance(d1[key], dict):  # recurse
             if not dict_subset(d1[key], d2[key]):
                 return False
         elif d1[key] != d2[key]:
@@ -98,7 +110,18 @@ def dict_subset(d1, d2):
 
     return True
 
-
+###########################
+#     Handling datetime   #
+###########################
+def parse_timedelta(string):
+    for u in time_units:
+        if u in string:
+            val, unit = string.split(" ")
+            assert unit == u
+            step = timedelta(**{unit : int(val)})
+            return step
+    else:
+        raise NotImplementedError(f"Unknown time delta: {step}, chose from {units}")
 def dt_to_str_in_dict(d):
 
     if isinstance(d, datetime):
@@ -115,87 +138,11 @@ def dt_to_str_in_dict(d):
     else:
         return d
 
-def get_flat_dict(d):
-    new_dict = dict()
-    for key, val in d.items():
-        if isinstance(val, dict):
-            for subkey, subval in get_flat_dict(val).items():
-                new_dict[(key,) + subkey] = subval
-        else:
-            new_dict[(key,)] = val
-    return new_dict
 
 
-def can_stringify(val):
-    return isinstance(val, (float, int, str))
-
-
-def load_from_file(fname) -> dict:
-    # print(f"Loading {fname}")
-    attr = fname.split("/")[-1].split(".")[0] #remove extension
-
-    if fname.endswith(".json"):
-        try:
-            with open(fname, "r") as f:
-                return json.loads(f.read())
-        except JSONDecodeError as e:
-            print(f"Error while loading {fname}")
-            raise e
-    elif fname.endswith(".pickle"):
-        with open(fname, "rb") as f:
-            return {attr: pickle.loads(f.read())}
-    elif fname.endswith(".txt"):
-        with open(fname, "r") as f:
-            str_val = f.read()
-            try:
-                return {attr: eval(str_val)}
-            except (NameError, SyntaxError):
-                return {attr : str_val}
-    elif fname.endswith(".lst"):
-        with open(fname, "r") as f:
-            res = []
-            for l in f.readlines():
-                try:
-                    res.append(eval(l.strip()))
-                except NameError:
-                    res.append(l.strip())
-            return {attr : res}
-    else:
-        raise ValueError(f"Unknown file extension for file {fname}")
-
-def results_to_df_old(dirname, fnames=[], separator="/", ignore_missing=False):
-    dfs = []
-    dirs = sorted(listdir(dirname))
-    dirs_read = []
-    pbar = tqdm(total=len(dirs), desc="Reading results from disk")
-    missing = []
-    for idx, fname in enumerate([CONFIG] + fnames):
-        results_fname = []
-        for edir in dirs:
-            if listdir(join(dirname, edir)):
-                fullname = join(dirname, edir, fname)
-                try:
-                    res = load_from_file(fullname)
-                    results_fname.append(flat_dict(res, separator))
-                    pbar.update(1/(1+len(fnames)))
-                    if idx == 0: dirs_read.append(edir)
-                except FileNotFoundError as e:
-                    if ignore_missing:
-                        missing.append(fullname)
-                        results_fname.append(np.nan)
-                    else:
-                        raise e
-        dfs.append(pd.DataFrame(results_fname))
-
-    if len(missing):
-        print(f"WARNING: missing following files:")
-        for n in natsorted(missing):
-            print(n)
-    df = pd.concat(dfs, axis="columns")
-    df.index = dirs_read
-    return df
-
-
+###########################
+#      Loading results    #
+###########################
 def results_to_df(dirname, fnames=[], separator="/", ignore_missing=False):
     dirs = sorted(listdir(dirname))
     pbar = tqdm(total=len(dirs), desc="Reading results from disk")
@@ -227,6 +174,39 @@ def results_to_df(dirname, fnames=[], separator="/", ignore_missing=False):
     return df
 
 
+def load_from_file(fname) -> dict:
+    attr = fname.split("/")[-1].split(".")[0] #remove extension
+
+    if fname.endswith(".json"):
+        try:
+            with open(fname, "r") as f:
+                return json.loads(f.read())
+        except JSONDecodeError as e:
+            print(f"Error while loading {fname}")
+            raise e
+    elif fname.endswith(".pickle"):
+        with open(fname, "rb") as f:
+            return {attr: pickle.loads(f.read())}
+    elif fname.endswith(".txt"):
+        with open(fname, "r") as f:
+            str_val = f.read()
+            try:
+                return {attr: eval(str_val)}
+            except (NameError, SyntaxError):
+                return {attr : str_val}
+    elif fname.endswith(".lst"):
+        with open(fname, "r") as f:
+            res = []
+            for l in f.readlines():
+                try:
+                    res.append(eval(l.strip()))
+                except NameError:
+                    res.append(l.strip())
+            return {attr : res}
+    else:
+        raise ValueError(f"Unknown file extension for file {fname}")
+
+
 def flat_dict(d, separator="/"):
     assert isinstance(d, dict), f"Expected dictionary but got {type(d)}"
     flat = dict()
@@ -238,43 +218,6 @@ def flat_dict(d, separator="/"):
         else:
             flat[key] = val
     return flat
-
-def load_results(dirname, attribute, filter=dict()):
-    """
-     load results from directory, filter based in filtering dict
-    :param dirname: main directory of results
-    :param attribute: artifact to load (any of the files stored)
-    :param filter - optional: dictionary to filter configuration files
-    :return:
-    """
-    assert isinstance(attribute, str)
-    assert attribute.endswith(".txt") or \
-            attribute.endswith(".json") or \
-                attribute.endswith(".pickle"), "Please provide filename extension of the attribute"
-
-
-    for edir in listdir(dirname):
-        if CONFIG not in listdir(join(dirname, edir)):
-            continue
-
-        with open(CONFIG, "r") as f:
-            config = json.loads(f.read())
-
-        if dict_subset(filter, config) is False:
-            continue
-
-        fname = join(dirname, edir, attribute)
-        if attribute.endswith(".json"):
-            with open(fname, "r") as f:
-                yield json.loads(f.read())
-        elif attribute.endswith(".pickle"):
-            with open(fname, "rb") as f:
-                yield pickle.loads(f.read())
-        else:
-            with open(fname, "r") as f:
-                yield eval(f.read())
-
-
 
 
 
