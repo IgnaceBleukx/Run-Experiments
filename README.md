@@ -32,19 +32,38 @@ To run the example, run the following commands:
 
 ```batch
 $ cd example
-$ python3 main.py sample_config.json my_cool_experiment MyRunner results/FirstExperiment --unravel --parallel
+$ python3 main.py sample_config.json my_cool_experiment MyRunner results --unravel --parallel
 ```
 The above example requires some argument parsing from the command line.
 A default parser can be imported: `from runexp import default_parser`.
 This parser will use the `argparse` library to parse some frequently used arguments.
 
+```bash
+$ python3 main.py --help
+usage: main.py [-h] [-u] [--parallel] [--num-workers NUM_WORKERS] config func runner output
+
+positional arguments:
+  config                Configuration file, should be json-formatted
+  func                  Main function of the experiment
+  runner                runexp Runner subclass to call
+  output                Directory to output results of experiments
+
+options:
+  -h, --help                  show this help message and exit
+  -u, --unravel               Whether to unravel config file to run experiments in a batch (will unravel lists in configuration file to separate configs)
+  --parallel                  Wheter to run experiments in paralell, only useful if `--unravel` is True
+  --num-workers NUM_WORKERS   Number of threads to use for parallelization (=nb of experiments running in parallel, default=11
+  --memory MEMORY             Memory limit in MB to use by each experiment, only works on Linux.
+```
+
+If the experiment runs out of memory, it will generate a `err.txt` file containing the stringified error, instead of the artifacts expected from the experiment. 
 
 ### Experiment function
 The main function of your experiment should take as input parameters defined in your configuration file.
 The output of this function should be a dictionary. 
 Each of the keys in this dictionary will be the filename of the artifact of the experiment.
 Based on the type of artifact, the way `runexp` stores the value will be different:
-1) If the artifact is human-readable (i.e., if it is a integer/string) the value will be put in a `.txt` file.
+1) If the artifact is human-readable (i.e., if it is an integer/string) the value will be put in a `.txt` file.
 2) If the artifact is a list/set/tuple of human-readable values, each of the values will be put on a new line in a `.lst` file. 
 3) If the artifact is a dictionary containing only human-readable values, the artifact will be written as a `.json` file.
 4) In all other cases, the value will be "pickled" and stored as a binary `.pickle` file.
@@ -65,6 +84,30 @@ This is identical to using `range(_from, _to)` in Python.
 In `example/sample_config.json` this feature is highlighted in the `seed` parameter.
 
 When the `--unravel` argument is set, the `sample_config.json` will be unraveled to 10 configuration files for running 10 experiments.
+
+`runexp` has special support for convering values to timestamps or timedelta's.
+For this, it relies on the Pandas library for converting strings to `pd.Timestamp` or `pandas.Timedelta` objects.
+To automatically convert a string to a timestamp, it's key in the config file should end with "_dt".
+Similarly, to convert to a timedelta, it should end with "_td".
+
+The library also supports expanding ranges of time-delta's with a given step.
+For example, the following configuration:
+```json
+{
+  "x_dt": {"_from": "2025-01-01", "_to": "2025-02-01", "_step": "1 day"}
+}
+```
+will be unraveled to the following 31 experiment configs:
+
+```python
+{'x_dt': {'start': pandas.Timestamp('2025-01-02 00:00:00'), 'delta': pandas.Timedelta('1 days 00:00:00')}}
+{'x_dt': {'start': pandas.Timestamp('2025-01-03 00:00:00'), 'delta': pandas.Timedelta('1 days 00:00:00')}}
+...
+{'x_dt': {'start': pandas.Timestamp('2025-01-30 00:00:00'), 'delta': pandas.Timedelta('1 days 00:00:00')}}
+{'x_dt': {'start': pandas.Timestamp('2025-01-31 00:00:00'), 'delta': pandas.Timedelta('1 days 00:00:00')}}
+````
+where "start" and "delta" are keys inserted by `runexp`.
+
 
 ### Runner subclass
 The `Runner` class is the heart of `runexp` where the magic happens.
@@ -95,7 +138,6 @@ In particular, the `utils.results_to_df` function is interesting.
 It takes as argument a main directory name (the parent dir of all `0000001`, `0000002`,... files) and a list of attrbibutes to load.
 This function will read each `config.json` file and transform the (nested) keys to a string, used as a column name in the resulting dataframe.
 The resulting dataframe can easily be used for further processing/plotting the results, as shown in [example/plot_results.ipynb](https://github.com/IgnaceBleukx/Run-Experiments/blob/main/example/plot_results.ipynb)
-Optionally, it also takes as argument a filter which is a dictionary that filters which experiments to load.
 
 # FAQ
 
