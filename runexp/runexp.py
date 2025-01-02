@@ -185,7 +185,7 @@ class Runner:
                 with open(join(dirname, str(key) + ".json"), "w") as f:
                     f.write(json.dumps(value))
 
-            elif isinstance(value, list) and all(can_stringify(v) for v in value):
+            elif isinstance(value, (list, set, tuple)) and all(can_stringify(v) for v in value):
                 with open(join(dirname, str(key) + ".lst"), "w") as f:
                     f.write("\n".join([str(v) for v in value]))
             else:  # save as pickle
