@@ -1,7 +1,7 @@
 from runexp import Runner, default_parser
 
 # make sure everything you call is imported here
-from dataclasses import HandyDataWrapper
+from data_wrappers import HandyDataWrapper
 
 class MyRunner(Runner):
 

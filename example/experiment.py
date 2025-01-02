@@ -1,4 +1,4 @@
-from dataclasses import HandyDataWrapper
+from data_wrappers import HandyDataWrapper
 import random
 
 def my_cool_experiment(arg1, arg2, seed=0):
@@ -11,6 +11,6 @@ def my_cool_experiment(arg1, arg2, seed=0):
     random.shuffle(lst_arg2)
 
     return {
-        "artifact1": arg1,
+        "data_wrapper": arg1,
         "scrambled_text": "".join(lst_arg2)
     }
