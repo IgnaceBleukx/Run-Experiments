@@ -124,6 +124,8 @@ def dt_to_str_in_dict(d):
 
     if isinstance(d, datetime):
         return d.strftime(STRFTIME)
+    elif isinstance(d, timedelta):
+        return f"{d.total_seconds()} seconds"
     elif isinstance(d, list):
         return [dt_to_str_in_dict(x) for x in d]
     elif isinstance(d, set):
