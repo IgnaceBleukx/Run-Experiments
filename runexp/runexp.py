@@ -139,7 +139,7 @@ class Runner:
 
             if CONFIG not in listdir(full_dir):
                 if len(listdir(full_dir)) != 0:
-                    raise ValueError("{full_dir} is not emptpy, but does not contain {CONFIG}, was the directory created by RunExp?")
+                    raise ValueError(f"{full_dir} is not emptpy, but does not contain {CONFIG}, was the directory created by RunExp?")
                 else:
                     continue
             with open(join(self.output_dir, edir, CONFIG), "r") as f:
