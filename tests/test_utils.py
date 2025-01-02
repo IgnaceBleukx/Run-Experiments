@@ -44,9 +44,15 @@ class TestDictUtils(unittest.TestCase):
         self.assertIsInstance(d['end_dt'], pd.Timestamp)
         self.assertIsInstance(d['delta_td'], pd.Timedelta)
 
-
-
     def test_unravel_dt_range(self):
+        config = dict(
+            x_dt={"_from": "2025-01-01", "_to": "2025-02-01", "_step": "1 days"}
+        )
+        dicts = unravel_dict(config)
+        self.assertEqual(len(dicts), 31)
+
+
+    def test_unravel_dt_range_nested(self):
         config = dict(
             a1="v1",
             a2=dict(a21="v21", a22="v22", a23_dt=dict(_from="2025-01-01",
