@@ -1,0 +1,46 @@
+
+
+import unittest
+import tempfile
+import os
+
+import runexp
+
+
+def make_lst(size):
+    data = [0] * (int(size * 1024 * 1024))  # 10MB list
+    return dict(data=data)
+
+def dummy(*args, **kwargs):
+    return dict(result="None")
+
+class RunnerTests(unittest.TestCase):
+
+    class MyRunner(runexp.Runner):
+        def make_kwargs(self, config): return config
+        def description(self, config): return str(config)
+
+
+    def test_one(self):
+        tempdir = os.path.join(tempfile.mkdtemp(), "results")
+        runner = self.MyRunner(dummy, output=tempdir)
+        runner.run_one(config=dict(key1="val1", key2="val2", key_lst=[1,2,3]))
+        self.assertEqual(len(os.listdir(tempdir)), 1)
+
+    def test_batch(self):
+        tempdir = os.path.join(tempfile.mkdtemp(), "results")
+        runner = self.MyRunner(dummy, output=tempdir)
+        runner.run_batch(config=dict(key1="val1", key2="val2", key_lst=[1, 2, 3]))
+        self.assertEqual(len(os.listdir(tempdir)), 3)
+
+    def test_batch_parallel(self):
+        tempdir = os.path.join(tempfile.mkdtemp(), "results")
+        runner = self.MyRunner(dummy, output=tempdir)
+        runner.run_batch(config=dict(key1="val1", key2="val2", key_lst=[1, 2, 3]), parallel=True)
+        self.assertEqual(len(os.listdir(tempdir)), 3)
+
+    def test_memlimit(self):
+        tempdir = tempfile.mkdtemp()
+        runner = self.MyRunner(make_lst, output=tempdir+"/results", memory_limit=1) # 1GB limit
+        runner.run_batch(config=dict(size=[1024 ** x for x in range(5)]))
+
