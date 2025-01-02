@@ -7,6 +7,8 @@ import resource
 import sys
 import json
 import pickle
+import traceback
+
 from tqdm.auto import tqdm
 
 from .utils import dict_subset, unravel_dict, can_stringify, CONFIG, dt_to_str_in_dict
@@ -120,7 +122,7 @@ class Runner:
         try:
             result = self.func(**kwargs)
         except MemoryError as e:
-            result = dict(err=str(e))
+            result = dict(err=str(traceback.format_exc()))
 
         # might need to increase memory limit for writing to file
         if self.memlimit > 0:
