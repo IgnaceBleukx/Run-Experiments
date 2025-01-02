@@ -45,8 +45,9 @@ The output of this function should be a dictionary.
 Each of the keys in this dictionary will be the filename of the artifact of the experiment.
 Based on the type of artifact, the way `runexp` stores the value will be different:
 1) If the artifact is human-readable (i.e., if it is a integer/string) the value will be put in a `.txt` file.
-2) If the artifact is a dictionary containing only human-readable values, the artifact will be written as a `.json` file.
-3) In all other cases, the value will be "pickled" and stored as a binary `.pickle` file.
+2) If the artifact is a list/set/tuple of human-readable values, each of the values will be put on a new line in a `.lst` file. 
+3) If the artifact is a dictionary containing only human-readable values, the artifact will be written as a `.json` file.
+4) In all other cases, the value will be "pickled" and stored as a binary `.pickle` file.
 
 For an example experiment function, take a look at the `example/experiment.py` file.
 This experiment takes as input a data wrapper and a string.
@@ -90,17 +91,11 @@ This can be changed by setting the `digits` attribute in your `Runner` instance.
 ## Processing results
 
 After running the experiments, `runexp` provides some utility function to ease the loading of results.
-In particular, the `utils.load_results` function is interesting.
-It takes as argument a main directory name (the parent dir of all `0000001`, `0000002`,... files) and the attribute to load.
+In particular, the `utils.results_to_df` function is interesting.
+It takes as argument a main directory name (the parent dir of all `0000001`, `0000002`,... files) and a list of attrbibutes to load.
+This function will read each `config.json` file and transform the (nested) keys to a string, used as a column name in the resulting dataframe.
+The resulting dataframe can easily be used for further processing/plotting the results, as shown in [example/plot_results.ipynb](https://github.com/IgnaceBleukx/Run-Experiments/blob/main/example/plot_results.ipynb)
 Optionally, it also takes as argument a filter which is a dictionary that filters which experiments to load.
-For example, if you would only like to load scrambled text of the results of the sample experiment, but only those who have `v2` to `1337`, you can use the following code:
-
-```python3
-from runexp.utils import load_results
-
-filter = {"arg1": {"v2":1337}}
-list(load_results("results/FirstExperiment", "scrambled_text", filter=filter))
-```
 
 # FAQ
 
