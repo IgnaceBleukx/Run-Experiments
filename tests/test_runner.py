@@ -40,7 +40,9 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(len(os.listdir(tempdir)), 3)
 
     def test_memlimit(self):
-        tempdir = tempfile.mkdtemp()
-        runner = self.MyRunner(make_lst, output=tempdir+"/results", memory_limit=1) # 1GB limit
+        tempdir = os.path.join(tempfile.mkdtemp(), "results")
+        runner = self.MyRunner(make_lst, output=tempdir, memory_limit=1024) # 1GB limit
         runner.run_batch(config=dict(size=[1024 ** x for x in range(5)]))
 
+        for exp_name in os.listdir(tempdir):
+            print(os.listdir(os.path.join(tempdir, exp_name)))
