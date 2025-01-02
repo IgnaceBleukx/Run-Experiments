@@ -36,6 +36,7 @@ if __name__ == "__main__":
         config = json.loads(f.read())
         runner = eval(args.runner)(func=eval(args.func),
                                    output=args.output,
+                                   memory_limit=args.memory_limit,
                                    printlog=True)
 
         if args.unravel is True:
