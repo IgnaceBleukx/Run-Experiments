@@ -1,6 +1,5 @@
 import glob
 import multiprocessing
-import time
 from datetime import datetime, timedelta, date
 from json import JSONDecodeError
 from os.path import join
@@ -8,18 +7,17 @@ from os import listdir
 import pickle
 import json
 
-import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
 from natsort import natsorted # pip install natsort
-
 
 dirlock = multiprocessing.Lock()
 
 CONFIG = "config.json"
 STRFTIME = "%Y-%m-%d %H:%M:%S"
-time_units = ["seconds", "minutes", "hours", "days", "weeks", "months", "years"]
 
+MAGIC_DT = "_dt" # which magic seqence a datetime value should end with
+MAGIC_TD = "_td" # which magic seqence a timedelta value should end with
 
 def can_stringify(val):
     return isinstance(val, (float, int, str))
@@ -29,27 +27,35 @@ def can_stringify(val):
 #     Processing dicts    #
 ###########################
 
-def unravel_dict(root_d):
+def unravel_dict(root_d, _dt=False, _td=False):
     new_dicts = [dict()]
 
     # range?
     if isinstance(root_d, dict) and {"_from", "_to"} <= set(root_d.keys()):
-        try:
-            start = datetime.strptime(root_d["_from"], STRFTIME)
-            stop = datetime.strptime(root_d["_to"], STRFTIME)
-            step = parse_timedelta(root_d["_step"])
-            t = start
+        if _dt is True:
+            assert "_step" in root_d, f"Unraveling a datetime range requires a step-size: {root_d}"
+            start = pd.to_datetime(root_d['_from'])
+            end = pd.to_datetime(root_d['_to'])
+            step = pd.to_timedelta(root_d['_step'])
             root_d = []
-            while t < stop:
-                root_d.append({"start" : t, "stop": t+step})
+            t = start
+            while t < end:
+                root_d.append({"start": t, "delta": step})
                 t += step
-
-        except (TypeError, ValueError):
+        elif _td is True:
+            raise ValueError("Cannot make a range from time-delta's!", root_d)
+        else: # normal range
             root_d = list(range(root_d['_from'], root_d['_to'], root_d.get("_step", 1)))
+
 
     if isinstance(root_d, dict):
         for key, val in root_d.items():
-            sub_dicts = unravel_dict(val)
+            if key.endswith(MAGIC_DT):
+                sub_dicts = unravel_dict(val, _dt=True)
+            elif key.endswith(MAGIC_TD):
+                sub_dicts = unravel_dict(val, _td=True)
+            else:
+                sub_dicts = unravel_dict(val)
             new_dicts = [d | {key : sd} for sd in sub_dicts for d in new_dicts]
 
     elif isinstance(root_d, list):
@@ -57,30 +63,31 @@ def unravel_dict(root_d):
         new_dicts = [d for lst in new_dicts for d in lst]
 
     elif isinstance(root_d, str):
-        if "*" in root_d:
-            new_dicts = natsorted(glob.glob(root_d)) # filename, expand
-        elif any(unit in root_d for unit in time_units): # time delta, convert
-            new_dicts = [parse_timedelta(root_d)]
+        if "*" in root_d: # filename, expand
+            new_dicts = natsorted(glob.glob(root_d))
+        elif _dt is True: # datetime, convert
+            new_dicts = [pd.to_datetime(root_d)]
+        elif _td is True: # time delta, convert
+            new_dicts = [pd.to_timedelta(root_d)]
         else:
-            try: # try converting to time
-                new_dicts = [datetime.strptime(root_d, STRFTIME)]
-            except (TypeError, ValueError):
-                new_dicts = [root_d]
+            new_dicts = [root_d]
     else:
         new_dicts = [root_d] # nothing to unravel
 
     return new_dicts
 
-
-def get_flat_dict(d):
-    new_dict = dict()
+def flat_dict(d, separator="/"):
+    assert isinstance(d, dict), f"Expected dictionary but got {type(d)}"
+    flat = dict()
     for key, val in d.items():
         if isinstance(val, dict):
-            for subkey, subval in get_flat_dict(val).items():
-                new_dict[(key,) + subkey] = subval
+            flat_sub = flat_dict(val, separator)
+            for subkey, subval in flat_sub.items():
+                flat[f"{key}{separator}{subkey}"] = subval
         else:
-            new_dict[(key,)] = val
-    return new_dict
+            flat[key] = val
+    return flat
+
 
 def dict_subset(d1, d2):
     """
@@ -113,31 +120,18 @@ def dict_subset(d1, d2):
 ###########################
 #     Handling datetime   #
 ###########################
-def parse_timedelta(string):
-    for u in time_units:
-        if u in string:
-            val, unit = string.split(" ")
-            assert unit == u
-            step = timedelta(**{unit : int(val)})
-            return step
-    else:
-        raise NotImplementedError(f"Unknown time delta: {step}, chose from {units}")
 def dt_to_str_in_dict(d):
 
     if isinstance(d, datetime):
         return d.strftime(STRFTIME)
-
     elif isinstance(d, list):
         return [dt_to_str_in_dict(x) for x in d]
-
     elif isinstance(d, set):
         return (dt_to_str_in_dict(x) for x in d)
-
     elif isinstance(d, dict):
         return {k : dt_to_str_in_dict(v) for k, v in d.items()}
     else:
         return d
-
 
 
 ###########################
@@ -207,17 +201,6 @@ def load_from_file(fname) -> dict:
         raise ValueError(f"Unknown file extension for file {fname}")
 
 
-def flat_dict(d, separator="/"):
-    assert isinstance(d, dict), f"Expected dictionary but got {type(d)}"
-    flat = dict()
-    for key, val in d.items():
-        if isinstance(val, dict):
-            flat_sub = flat_dict(val, separator)
-            for subkey, subval in flat_sub.items():
-                flat[f"{key}{separator}{subkey}"] = subval
-        else:
-            flat[key] = val
-    return flat
 
 
 
