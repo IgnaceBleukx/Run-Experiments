@@ -110,9 +110,10 @@ class Runner:
         if self.memlimit > 0:
             os_name = platform.platform()
             if not os_name.startswith("Linux"): raise ValueError("Currently only support setting memory limits for Linux")
-            _, hard = resource.getrlimit(resource.RLIMIT_AS)
-            limit = int(self.memlimit * 1024 * 1024 * 1024)
-            resource.setrlimit(resource.RLIMIT_AS, (limit, hard))
+            current_soft, hard = resource.getrlimit(resource.RLIMIT_AS)
+            limit_bytes = int(self.memlimit * 1024 * 1024) # self.memlimit in MB
+            print(f"Setting limit to {limit_bytes} bytes")
+            resource.setrlimit(resource.RLIMIT_AS, (limit_bytes, hard))
 
         dirname = self.mkdir()
         kwargs = self.make_kwargs(config)
@@ -120,6 +121,11 @@ class Runner:
             result = self.func(**kwargs)
         except MemoryError as e:
             result = dict(err=str(e))
+
+        # might need to increase memory limit for writing to file
+        if self.memlimit > 0:
+            resource.setrlimit(resource.RLIMIT_AS, (current_soft, hard))
+
         self.save_result(config, result, dirname)
 
     #####################################################
