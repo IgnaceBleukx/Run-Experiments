@@ -192,7 +192,11 @@ def load_from_file(fname) -> dict:
     if fname.endswith(".json"):
         try:
             with open(fname, "r") as f:
-                return json.loads(f.read())
+                txt = f.read()
+                if len(txt):
+                    return json.loads(txt)
+                else:
+                    return dict()
         except JSONDecodeError as e:
             print(f"Error while loading {fname}")
             raise e
