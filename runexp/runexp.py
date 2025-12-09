@@ -216,7 +216,7 @@ class Runner:
                 with open(join(dirname, str(key) + ".txt"), "w") as f:
                     f.write(str(value))
 
-            elif isinstance(value, dict):
+            elif isinstance(value, dict) and all(can_stringify(k) and can_stringify(v) for k,v in value.items()):
                 with open(join(dirname, str(key) + ".json"), "w") as f:
                     f.write(json.dumps(value))
 
