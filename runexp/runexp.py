@@ -33,14 +33,13 @@ class Runner:
         """
 
         try:
-            os.mkdir(output)
+            os.makedirs(output)
         except FileExistsError:
             answer = input(OUTPUT_DIR_EXISTS.format(output))
             if answer == "y":
                 pass
             else:
                 exit(1)
-
         self.func = func
         self.output_dir = output
         self.digits = 6
@@ -156,18 +155,19 @@ class Runner:
         filtered = copy.copy(configs)
         for edir in listdir(self.output_dir):
             full_dir = join(self.output_dir, edir)
-
-            if CONFIG not in listdir(full_dir):
-                if len(listdir(full_dir)) != 0:
-                    raise ValueError(f"{full_dir} is not emptpy, but does not contain {CONFIG}, was the directory created by RunExp?")
-                else:
-                    continue
-            with open(join(self.output_dir, edir, CONFIG), "r") as f:
-                disk_conf = json.loads(f.read())
-                if disk_conf in str_filtered:
-                    idx = str_filtered.index(disk_conf)
-                    filtered.pop(idx)
-                    str_filtered.pop(idx)
+            if os.path.isdir(full_dir):
+                # robustify the code to some dummy files, e.g .DS_Store
+                if CONFIG not in listdir(full_dir):
+                    if len(listdir(full_dir)) != 0:
+                        raise ValueError(f"{full_dir} is not emptpy, but does not contain {CONFIG}, was the directory created by RunExp?")
+                    else:
+                        continue
+                with open(join(self.output_dir, edir, CONFIG), "r") as f:
+                    disk_conf = json.loads(f.read())
+                    if disk_conf in str_filtered:
+                        idx = str_filtered.index(disk_conf)
+                        filtered.pop(idx)
+                        str_filtered.pop(idx)
 
         return filtered
 
@@ -182,6 +182,7 @@ class Runner:
             try:
                 os.mkdir(full_dir)
             except FileExistsError:
+                print(len(full_dir))
                 assert len(listdir(full_dir)) == 0, f"{full_dir} should be empty"
                 pass
             return full_dir
@@ -193,14 +194,15 @@ class Runner:
         """
         last_idx = 0
         for edir in sorted(listdir(self.output_dir)):
-            idx = int(edir)
-            if idx - 1 != last_idx:  # some missing number in the chain
-                return last_idx + 1
-            # if len(listdir(join(self.output_dir, edir))) == 0:  # found empty dir
-            #     return idx
-            last_idx = idx
+            if os.path.isdir(os.path.join(self.output_dir, edir)):
+                # THis condition make the code robust to some files that your os can generate (like .DS_store..)
+                idx = int(edir)
+                if idx - 1 != last_idx:  # some missing number in the chain
+                    return last_idx + 1
+                # if len(listdir(join(self.output_dir, edir))) == 0:  # found empty dir
+                #     return idx
+                last_idx = idx
         return last_idx + 1
-
 
     def save_result(self, config, result, dirname):
 

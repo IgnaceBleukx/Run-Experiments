@@ -14,6 +14,11 @@ def make_lst(size_in_bytes):
 def dummy(*args, **kwargs):
     return dict(result="None")
 
+class Hashable:
+    def __hash__(self): return 1
+    def __eq__(self, other): return True
+
+
 class RunnerTests(unittest.TestCase):
 
     class MyRunner(runexp.Runner):
@@ -49,3 +54,45 @@ class RunnerTests(unittest.TestCase):
         self.assertIn("size_in_mb.txt", os.listdir(os.path.join(tempdir, "000003"))) # 1MB should work
         self.assertIn("err.txt", os.listdir(os.path.join(tempdir, "000004")))        # 1GB should not work
         self.assertIn("err.txt", os.listdir(os.path.join(tempdir, "000005")))        # 10GB should not work
+
+
+    def test_write_result(self):
+
+        tempdir = "test_writing"
+        #tempdir = os.path.join(tempfile.mkdtemp(), "results")
+        runner = self.MyRunner(dummy, output=tempdir)
+
+
+        adict = dict(val1 = "foo", val2 = "bar")
+        bdict = dict(val1 = Hashable(), val2 = "bar")
+        cdict = {Hashable() : "foo", "val2" : "bar"}
+
+        result = {
+                "result_txt": 'foo',
+                "result_int": 42,
+                "result_float": 13.37,
+                "result_dict": adict,
+                "result_bdict": bdict,
+                "result_cdict": cdict,
+                "result_pickle": Hashable()
+                }
+
+        runner.save_result(dict(origin="test_runner.py", func="test_write_result"), result, tempdir)
+
+        # check results
+        import pickle
+        with open(os.path.join(tempdir, "result_txt.txt"),"r") as f:
+            self.assertEqual(f.read(), "foo")
+        with open(os.path.join(tempdir, "result_int.txt"), "r") as f:
+            self.assertEqual(f.read(), "42")
+        with open(os.path.join(tempdir, "result_float.txt"), "r") as f:
+            self.assertEqual(f.read(), "13.37")
+        with open(os.path.join(tempdir, "result_dict.json"), "r") as f:
+            self.assertEqual(f.read(), '{"val1": "foo", "val2": "bar"}')
+        with open(os.path.join(tempdir, "result_bdict.pickle"), "rb") as f:
+            self.assertEqual(pickle.loads(f.read()), bdict)
+        with open(os.path.join(tempdir, "result_cdict.pickle"), "rb") as f:
+            self.assertEqual(pickle.loads(f.read()), cdict)
+        with open(os.path.join(tempdir, "result_pickle.pickle"), "rb") as f:
+            self.assertEqual(pickle.loads(f.read()), Hashable())
+

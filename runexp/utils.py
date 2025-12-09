@@ -10,7 +10,7 @@ import json
 import pandas as pd
 from tqdm.auto import tqdm
 from natsort import natsorted # pip install natsort
-
+import os
 dirlock = multiprocessing.Lock()
 
 CONFIG = "config.json"
@@ -155,9 +155,11 @@ def dt_to_str_in_dict(d):
 ###########################
 def results_to_df(dirname, fnames=[], separator="/", ignore_missing=False):
     dirs = sorted(listdir(dirname))
+    dirs = [d for d in dirs if os.path.isdir(os.path.join(dirname, d))]
     pbar = tqdm(total=len(dirs), desc="Reading results from disk")
     missing = []
     data = []
+
     for edir in dirs:
         row = dict()
         for fname in [CONFIG] + fnames:
@@ -190,7 +192,11 @@ def load_from_file(fname) -> dict:
     if fname.endswith(".json"):
         try:
             with open(fname, "r") as f:
-                return json.loads(f.read())
+                txt = f.read()
+                if len(txt):
+                    return json.loads(txt)
+                else:
+                    return dict()
         except JSONDecodeError as e:
             print(f"Error while loading {fname}")
             raise e
