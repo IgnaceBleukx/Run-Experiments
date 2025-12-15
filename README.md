@@ -13,7 +13,7 @@ Highlight features include:
 ## How to install?
 The easiest way to use the repository is to download/clone the repo and install the package in "editable" mode:
 ```batch
-$ pip install -e runexp
+$ pip git+https://github.com/IgnaceBleukx/Run-Experiments.git
 ```
 
 ## How to use?
