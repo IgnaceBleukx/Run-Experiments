@@ -72,6 +72,7 @@ class RunnerTests(unittest.TestCase):
                 "result_int": 42,
                 "result_float": 13.37,
                 "result_dict": adict,
+                "result_dict_json": dict("dict": adict, "int": 42, "float": 13.37),
                 "result_bdict": bdict,
                 "result_cdict": cdict,
                 "result_pickle": Hashable()
@@ -89,6 +90,8 @@ class RunnerTests(unittest.TestCase):
             self.assertEqual(f.read(), "13.37")
         with open(os.path.join(tempdir, "result_dict.json"), "r") as f:
             self.assertEqual(f.read(), '{"val1": "foo", "val2": "bar"}')
+        with open(os.path.join(tempdir, "result_dict_json.json"), "r") as f:
+            self.assertEqual(f.read(), '{"dict": {"val1": "foo", "val2": "bar"}, "int": 42, "float": 13.37}')
         with open(os.path.join(tempdir, "result_bdict.pickle"), "rb") as f:
             self.assertEqual(pickle.loads(f.read()), bdict)
         with open(os.path.join(tempdir, "result_cdict.pickle"), "rb") as f:
