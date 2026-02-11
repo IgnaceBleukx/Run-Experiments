@@ -22,6 +22,20 @@ MAGIC_TD = "_td" # which magic seqence a timedelta value should end with
 def can_stringify(val):
     return isinstance(val, (float, int, str))
 
+def can_write_to_json(val):
+
+    if can_stringify(val):
+        return True
+    
+    if isinstance(val, dict):
+        return all(isinstance(k, str) and can_write_to_json(v) for k, v in val.items())
+    
+    if isinstance(val, (list, set, tuple)):
+        return all(can_write_to_json(v) for v in val)
+    
+    # something else, definitely not json-able
+    return False
+
 
 ###########################
 #     Processing dicts    #
@@ -176,10 +190,10 @@ def results_to_df(dirname, fnames=[], separator="/", ignore_missing=False):
         data.append(row)
         pbar.update()
 
-    if len(missing):
-        print(f"WARNING: missing following files:")
-        for n in natsorted(missing):
-            print(n)
+    #if len(missing):
+    #    print(f"WARNING: missing following files:")
+    #    for n in natsorted(missing):
+    #        print(n)
 
     df = pd.DataFrame.from_dict(data)
     df.index = dirs

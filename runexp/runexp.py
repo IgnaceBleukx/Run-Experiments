@@ -11,7 +11,7 @@ import traceback
 
 from tqdm.auto import tqdm
 
-from .utils import dict_subset, unravel_dict, can_stringify, CONFIG, dt_to_str_in_dict
+from .utils import dict_subset, unravel_dict, can_stringify, can_write_to_json, CONFIG, dt_to_str_in_dict
 
 from os.path import dirname, abspath, join
 from os import listdir
@@ -218,7 +218,7 @@ class Runner:
                 with open(join(dirname, str(key) + ".txt"), "w") as f:
                     f.write(str(value))
 
-            elif isinstance(value, dict) and all(can_stringify(k) and can_stringify(v) for k,v in value.items()):
+            elif isinstance(value, dict) and can_write_to_json(value):
                 with open(join(dirname, str(key) + ".json"), "w") as f:
                     f.write(json.dumps(value))
 
