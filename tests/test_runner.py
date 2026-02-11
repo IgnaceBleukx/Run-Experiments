@@ -72,7 +72,7 @@ class RunnerTests(unittest.TestCase):
                 "result_int": 42,
                 "result_float": 13.37,
                 "result_dict": adict,
-                "result_dict_json": dict("dict": adict, "int": 42, "float": 13.37),
+                "result_dict_json": {"dict": adict, "int": 42, "float": 13.37},
                 "result_bdict": bdict,
                 "result_cdict": cdict,
                 "result_pickle": Hashable()
